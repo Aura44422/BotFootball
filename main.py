@@ -87,7 +87,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if active_subscription:
         sub_types = {"week": "1 неделя", "two_weeks": "2 недели", "month": "1 месяц"}
         sub_name = sub_types.get(active_subscription.subscription_type, active_subscription.subscription_type)
-        end_date_str = active_subscription.end_date.strftime("%d.%m.%Y %H:%M")
+        end_date_str = active_subscription.end_date.strftime("%d\\.\%m\\.\%Y %H\\:\%M")
         welcome_text += (
             f"*У вас активна подписка:* {sub_name}\n"
             f"Действует до: {end_date_str}\n\n"
@@ -284,12 +284,17 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_beautiful_message(update, context, error_text, InlineKeyboardMarkup(keyboard))
 
 async def send_match_info(bot, chat_id, match, is_notification=False):
-    match_time = match.match_time.strftime("%d.%m.%Y %H:%M")
+    match_time_escaped = match.match_time.strftime("%d\\.\%m\\.\%Y %H\\:\%M")
     prefix = "НОВЫЙ МАТЧ!\n" if is_notification else ""
+    # Экранируем названия команд и соревнования
+    home_team_escaped = escape_markdown(match.home_team, version=2)
+    away_team_escaped = escape_markdown(match.away_team, version=2)
+    competition_escaped = escape_markdown(match.competition, version=2)
+
     match_text = (
-        f"{prefix}*{match.home_team} — {match.away_team}*\n"
-        f"{match.competition}\n"
-        f"{match.match_time.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"{prefix}*{home_team_escaped} — {away_team_escaped}*\n"
+        f"{competition_escaped}\n"
+        f"{match_time_escaped}\n\n"
         f"Коэффициенты:\n"
         f"1: {match.odds_1:.2f}   X: {match.odds_x:.2f}   2: {match.odds_2:.3f}"
     )
@@ -301,7 +306,7 @@ async def send_match_info(bot, chat_id, match, is_notification=False):
     await bot.send_message(
         chat_id=chat_id,
         text=match_text,
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.MARKDOWN_V2, # Используем MarkdownV2, так как экранируем символы для него
         reply_markup=reply_markup
     )
 
@@ -373,9 +378,12 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_beautiful_message(update, context, "⛔️ У вас нет доступа к этой функции.")
         return
     stats = await db_service.get_weekly_stats()
+    # Экранируем дефисы в строках дат
+    week_start_escaped = stats['week_start'].replace("-", "\\-")
+    week_end_escaped = stats['week_end'].replace("-", "\\-")
     stats_text = (
         f"📊 *Статистика OddFury за неделю*\n"
-        f"Период: {stats['week_start']} — {stats['week_end']}\n\n"
+        f"Период: {week_start_escaped} — {week_end_escaped}\n\n"
         f"👥 Активных подписок: {stats['active_subscriptions']}\n"
         f"👤 Пользователей без подписки: {stats['inactive_users']}\n"
         f"🆕 Новых подписок: {stats['new_subscriptions']}\n"
@@ -387,7 +395,7 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         stats_text += "🔝 Самая популярная подписка: нет данных"
     keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data="admin_panel")]]
-    await send_beautiful_message(update, context, stats_text, InlineKeyboardMarkup(keyboard))
+    await send_beautiful_message(update, context, stats_text, InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.MARKDOWN_V2)
 
 async def admin_give_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -568,7 +576,11 @@ async def weekly_stats_job(context: ContextTypes.DEFAULT_TYPE):
     # Get statistics
     stats = await db_service.get_weekly_stats()
     
-    stats_text = f"📊 *Еженедельный отчет ({stats['week_start']} - {stats['week_end']})*\n\n"
+    # Экранируем дефисы в строках дат
+    week_start_escaped = stats['week_start'].replace("-", "\\-")
+    week_end_escaped = stats['week_end'].replace("-", "\\-")
+
+    stats_text = f"📊 *Еженедельный отчет ({week_start_escaped} - {week_end_escaped})*\n\n"
     stats_text += f"👥 Активных подписок: {stats['active_subscriptions']}\n"
     stats_text += f"👤 Пользователей без подписки: {stats['inactive_users']}\n"
     stats_text += f"🆕 Новых подписок за неделю: {stats['new_subscriptions']}\n"
@@ -590,7 +602,7 @@ async def weekly_stats_job(context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(
                 chat_id=admin_id,
                 text=stats_text,
-                parse_mode=ParseMode.MARKDOWN
+                parse_mode=ParseMode.MARKDOWN_V2, # Используем MarkdownV2
             )
         except Exception as e:
             logger.error(f"Failed to send weekly stats to admin {admin_id}: {e}")
@@ -623,8 +635,8 @@ async def send_subscription_expiry_notification(context: ContextTypes.DEFAULT_TY
             expiring_subscriptions = result.all()
             
             for subscription, user in expiring_subscriptions:
-                # Format the expiry date
-                expiry_date = subscription.end_date.strftime("%d.%m.%Y %H:%M")
+                # Format the expiry date and escape Markdown characters
+                expiry_date_escaped = subscription.end_date.strftime("%d\\.\%m\\.\%Y %H\\:\%M")
                 
                 # Subscription type
                 sub_types = {
@@ -637,7 +649,7 @@ async def send_subscription_expiry_notification(context: ContextTypes.DEFAULT_TY
                 # Create expiry notification message
                 expiry_text = f"⚠️ *Внимание! Срок вашей подписки заканчивается*\n\n"
                 expiry_text += f"Тип подписки: {sub_type}\n"
-                expiry_text += f"Действительна до: {expiry_date}\n\n"
+                expiry_text += f"Действительна до: {expiry_date_escaped}\n\n"
                 expiry_text += "Чтобы продолжить получать информацию о матчах, пожалуйста, продлите подписку."
                 
                 # Create inline keyboard for renewal
@@ -651,7 +663,7 @@ async def send_subscription_expiry_notification(context: ContextTypes.DEFAULT_TY
                     await context.bot.send_message(
                         chat_id=user.telegram_id,
                         text=expiry_text,
-                        parse_mode=ParseMode.MARKDOWN,
+                        parse_mode=ParseMode.MARKDOWN_V2, # Используем MarkdownV2
                         reply_markup=InlineKeyboardMarkup(keyboard)
                     )
                     logger.info(f"Sent expiry notification to user {user.telegram_id}")
