@@ -1,0 +1,29 @@
+# Python
+.Python
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.pytest_cache/
+.tox/
+build/
+dist/
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.bak
+*~
+.DS_Store
+
+# Bot specific
+.env
+football_bot.db 
