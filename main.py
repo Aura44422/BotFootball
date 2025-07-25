@@ -110,7 +110,7 @@ async def find_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.edit_message_text(
                 chat_id=update.effective_chat.id,
                 message_id=loading_msg.message_id,
-                text="Поиск завершён. Осталось бесплатных запросов: *0*\n\nВ данный момент нет подходящих матчей.\nВы получите уведомление, как только они появятся!",
+                text=f"Поиск завершён. Осталось бесплатных запросов: *{user.trial_messages_left}*\n\nВ данный момент нет подходящих матчей.\nВы получите уведомление, как только они появятся!",
                 parse_mode=ParseMode.MARKDOWN
             )
         else:
