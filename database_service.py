@@ -303,8 +303,7 @@ class DatabaseService:
                 match.notification_sent = True
                 await session.commit()
 
-    @staticmethod
-    async def get_weekly_stats():
+    async def get_weekly_stats(self):
         async with self.async_session() as session:
             today = datetime.utcnow().date()
             # Get current week's start (Monday) and end (Sunday)
