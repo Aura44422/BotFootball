@@ -403,8 +403,10 @@ async def admin_give_subscription(update: Update, context: ContextTypes.DEFAULT_
 
 async def handle_admin_give_sub_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.message.text.strip().replace("@", "")
+    # Дополнительно экранируем дефисы, так как они могут быть в имени пользователя и не всегда корректно экранируются escape_markdown
+    username_with_escaped_hyphens = username.replace("-", "\\-")
     context.user_data["sub_username"] = username
-    escaped_username = escape_markdown(username, version=2) # Экранируем имя пользователя для MarkdownV2
+    escaped_username = escape_markdown(username_with_escaped_hyphens, version=2) # Экранируем имя пользователя для MarkdownV2
     keyboard = [
         [InlineKeyboardButton("1 неделя", callback_data="admin_give_week")],
         [InlineKeyboardButton("2 недели", callback_data="admin_give_two_weeks")],
