@@ -648,14 +648,15 @@ async def healthcheck(request):
     return web.Response(text="OK", status=200)
 
 def run_healthcheck_server():
+    loop = asyncio.new_event_loop()  # Создаем новый event loop для этого потока
+    asyncio.set_event_loop(loop)     # Устанавливаем его как текущий event loop
     app = web.Application()
-    app.router.add_get("/health", healthcheck)
+    app.router.add_get('/health', healthcheck)
     runner = web.AppRunner(app)
-    loop = asyncio.get_event_loop()
     loop.run_until_complete(runner.setup())
-    site = web.TCPSite(runner, "0.0.0.0", 8080)
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
     loop.run_until_complete(site.start())
-    logger.info("Healthcheck endpoint running on :8080/health")
+    loop.run_forever()
 
 # Graceful shutdown
 should_exit = False
