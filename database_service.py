@@ -134,6 +134,17 @@ class DatabaseService:
                 )
             )
             return result.scalars().first() is not None
+
+    async def get_active_subscription(self, user_id):
+        async with self.async_session() as session:
+            now = datetime.utcnow()
+            result = await session.execute(
+                select(Subscription).where(
+                    and_(Subscription.user_id == user_id, Subscription.end_date >= now)
+                )
+            )
+            return result.scalars().first()
+
     async def decrement_trial_message(self, user_id):
         async with self.async_session() as session:
             user = await session.get(User, user_id)
@@ -197,7 +208,7 @@ class DatabaseService:
             return subscription
     async def admin_create_subscription(self, username, subscription_type):
         async with self.async_session() as session:
-            user_result = await session.execute(select(User).where(User.username == username))
+            user_result = await session.execute(select(User).where(func.lower(User.username) == func.lower(username)))
             user = user_result.scalars().first()
             
             if not user:
@@ -229,7 +240,7 @@ class DatabaseService:
 
     async def revoke_subscription(self, username):
         async with self.async_session() as session:
-            user_result = await session.execute(select(User).where(User.username == username))
+            user_result = await session.execute(select(User).where(func.lower(User.username) == func.lower(username)))
             user = user_result.scalars().first()
             
             if not user:
