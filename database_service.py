@@ -186,26 +186,48 @@ class DatabaseService:
     async def create_subscription(self, user_id, subscription_type, amount, payment_id):
         async with self.async_session() as session:
             now = datetime.utcnow()
+
+            # Calculate timedelta based on subscription type
             if subscription_type == "week":
-                end_date = now + timedelta(weeks=1)
+                duration = timedelta(weeks=1)
             elif subscription_type == "two_weeks":
-                end_date = now + timedelta(weeks=2)
+                duration = timedelta(weeks=2)
             elif subscription_type == "month":
-                end_date = now + timedelta(days=31)
+                duration = timedelta(days=31)
             else:
-                end_date = now + timedelta(weeks=1)
-            subscription = Subscription(
-                user_id=user_id,
-                start_date=now,
-                end_date=end_date,
-                subscription_type=subscription_type,
-                price_paid=amount,
-                payment_id=payment_id
-            )
-            session.add(subscription)
+                duration = timedelta(weeks=1) # Default to 1 week
+
+            # Check for existing active subscription
+            existing_subscription = await self.get_active_subscription(user_id)
+
+            if existing_subscription:
+                # Extend existing subscription
+                # If current subscription expired, start new period from now
+                # Otherwise, add to existing end date
+                base_date = max(now, existing_subscription.end_date)
+                existing_subscription.end_date = base_date + duration
+                existing_subscription.price_paid += amount # Add to total paid
+                existing_subscription.payment_id = payment_id # Update with new payment ID
+                subscription = existing_subscription
+                is_renewal = True
+            else:
+                # Create new subscription
+                end_date = now + duration
+                subscription = Subscription(
+                    user_id=user_id,
+                    start_date=now,
+                    end_date=end_date,
+                    subscription_type=subscription_type,
+                    price_paid=amount,
+                    payment_id=payment_id
+                )
+                session.add(subscription)
+                is_renewal = False
+
             await session.commit()
             await session.refresh(subscription)
-            return subscription
+            return subscription, is_renewal
+
     async def admin_create_subscription(self, username, subscription_type):
         async with self.async_session() as session:
             user_result = await session.execute(select(User).where(func.lower(User.username) == func.lower(username)))
@@ -214,29 +236,49 @@ class DatabaseService:
             if not user:
                 return None
             
-            end_date = datetime.utcnow()
+            now = datetime.utcnow()
+            # Calculate duration based on subscription type and set price
             if subscription_type == "week":
-                end_date += timedelta(days=7)
+                duration = timedelta(days=7)
                 price = 650
             elif subscription_type == "two_weeks":
-                end_date += timedelta(days=14)
+                duration = timedelta(days=14)
                 price = 1300
             elif subscription_type == "month":
-                end_date += timedelta(days=30)
+                duration = timedelta(days=30)
                 price = 2500
+            else:
+                return None # Unknown subscription type
+
+            # Check for existing active subscription
+            existing_subscription = await self.get_active_subscription(user.id)
+
+            if existing_subscription:
+                # Extend existing subscription
+                base_date = max(now, existing_subscription.end_date)
+                existing_subscription.end_date = base_date + duration
+                existing_subscription.price_paid += price # Add to total paid
+                existing_subscription.subscription_type = subscription_type # Update type if changed
+                existing_subscription.payment_id = f"admin_{uuid.uuid4().hex[:10]}"
+                subscription = existing_subscription
+                is_renewal = True
+            else:
+                # Create new subscription
+                end_date = now + duration
+                subscription = Subscription(
+                    user_id=user.id,
+                    start_date=now,
+                    end_date=end_date,
+                    subscription_type=subscription_type,
+                    price_paid=price,
+                    payment_id=f"admin_{uuid.uuid4().hex[:10]}"
+                )
+                session.add(subscription)
+                is_renewal = False
             
-            subscription = Subscription(
-                user_id=user.id,
-                end_date=end_date,
-                subscription_type=subscription_type,
-                price_paid=price,
-                payment_id=f"admin_{uuid.uuid4().hex[:10]}"
-            )
-            
-            session.add(subscription)
             await session.commit()
             await session.refresh(subscription)
-            return subscription, user.telegram_id
+            return subscription, user.telegram_id, is_renewal
 
     async def revoke_subscription(self, username):
         async with self.async_session() as session:
