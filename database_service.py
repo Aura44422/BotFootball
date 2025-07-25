@@ -1,9 +1,9 @@
 import os
 import logging
 import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, select, and_, text
+from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, select, and_, text, or_, desc, func
 from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 import threading
