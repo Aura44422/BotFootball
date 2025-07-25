@@ -121,11 +121,11 @@ async def find_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text="Поиск завершён.\n\nВ данный момент нет подходящих матчей.\nВы получите уведомление, как только они появятся!",
                 parse_mode=ParseMode.MARKDOWN
             )
-        await send_beautiful_message(
-            update, context,
-            "В данный момент нет подходящих матчей.\nВы получите уведомление, как только они появятся.",
-            InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ В меню", callback_data="start")]])
-        )
+        # await send_beautiful_message(
+        #     update, context,
+        #     "В данный момент нет подходящих матчей.\nВы получите уведомление, как только они появятся.",
+        #     InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ В меню", callback_data="start")]])
+        # )
         return
 
     # Only decrement trial message if matches are found
