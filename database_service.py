@@ -7,6 +7,8 @@ from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, select
 from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 import threading
+import uuid
+import json
 
 from models import User, Subscription, PaymentLink, Match, Stats, Base
 
@@ -141,7 +143,6 @@ class DatabaseService:
                 return user.trial_messages_left
             return 0
     async def create_payment_link(self, telegram_user_id, subscription_type, amount):
-        import uuid
         unique_id = uuid.uuid4().hex[:10]
         async with self.async_session() as session:
             payment_link = PaymentLink(
