@@ -413,7 +413,7 @@ async def handle_admin_give_sub_username(update: Update, context: ContextTypes.D
     ]
     await send_beautiful_message(
         update, context,
-        f"⏱️ Выберите срок премиум-подписки для @{escaped_username}:",
+        f"⏱️ Выберите срок премиум-подписки для \@{escaped_username}:", # Экранируем @ для надежности
         InlineKeyboardMarkup(keyboard),
         parse_mode=ParseMode.MARKDOWN_V2 # Указываем MarkdownV2 для этого сообщения
     )
