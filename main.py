@@ -234,8 +234,14 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if payment_result["success"]:
         sub_types = {"week": "1 неделя", "two_weeks": "2 недели", "month": "1 месяц"}
         sub_type_name = sub_types.get(payment_result["subscription_type"], payment_result["subscription_type"])
+        
+        if payment_result.get("is_renewal", False):
+            status_text = "*Подписка продлена!*"
+        else:
+            status_text = "*Подписка активирована!*"
+
         success_text = (
-            f"*Подписка активирована!*\n\n"
+            f"{status_text}\n\n"
             f"Тип: {sub_type_name}\n"
             f"Действует до: {payment_result['end_date']}\n\n"
             f"Спасибо, что выбрали OddFury — сервис поиска футбольных матчей по коэффициентам."
@@ -430,12 +436,20 @@ async def admin_process_give_subscription(update: Update, context: ContextTypes.
             InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Назад", callback_data="admin_panel")]])
         )
         return
-    subscription, user_telegram_id = result
+    subscription, user_telegram_id, is_renewal = result
     sub_types = {"week": "1 неделя", "two_weeks": "2 недели", "month": "1 месяц"}
     sub_name = sub_types.get(sub_type, sub_type)
     end_date = subscription.end_date.strftime("%d.%m.%Y %H:%M")
+
+    if is_renewal:
+        admin_status_text = "*Подписка успешно продлена пользователю*"
+        user_status_text = "*Ваша подписка OddFury была продлена администратором!*"
+    else:
+        admin_status_text = "*Подписка успешно выдана пользователю*"
+        user_status_text = "*Вам выдана подписка OddFury!*"
+
     admin_text = (
-        f"*Подписка успешно выдана пользователю @{username}*\n"
+        f"{admin_status_text} @{username}*\n"
         f"Тип: {sub_name}\nДействует до: {end_date}"
     )
     await send_beautiful_message(
@@ -444,7 +458,7 @@ async def admin_process_give_subscription(update: Update, context: ContextTypes.
         InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Назад", callback_data="admin_panel")]])
     )
     user_text = (
-        f"*Вам выдана подписка OddFury!*\n\n"
+        f"{user_status_text}\n\n"
         f"Тип: {sub_name}\nДействует до: {end_date}\n\n"
         f"Спасибо, что выбрали OddFury."
     )
