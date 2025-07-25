@@ -10,6 +10,7 @@ from telegram.ext import (
     ContextTypes, MessageHandler, filters
 )
 from telegram.constants import ParseMode
+from telegram.helpers import escape_markdown
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import atexit
@@ -403,6 +404,7 @@ async def admin_give_subscription(update: Update, context: ContextTypes.DEFAULT_
 async def handle_admin_give_sub_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.message.text.strip().replace("@", "")
     context.user_data["sub_username"] = username
+    escaped_username = escape_markdown(username, version=2) # Экранируем имя пользователя
     keyboard = [
         [InlineKeyboardButton("1 неделя", callback_data="admin_give_week")],
         [InlineKeyboardButton("2 недели", callback_data="admin_give_two_weeks")],
@@ -411,7 +413,7 @@ async def handle_admin_give_sub_username(update: Update, context: ContextTypes.D
     ]
     await send_beautiful_message(
         update, context,
-        "⏱️ Выберите срок премиум-подписки для @{username}:",
+        f"⏱️ Выберите срок премиум-подписки для @{escaped_username}:",
         InlineKeyboardMarkup(keyboard)
     )
     context.user_data.pop("admin_give_sub", None)
