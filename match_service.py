@@ -82,18 +82,35 @@ class MatchService:
         return self.cache
     async def check_for_matches_with_target_odds(self, min_odds=1.5, max_odds=5.0):
         """
-        Возвращает матчи с коэффициентами в заданном диапазоне. Работает с кэшем и API.
+        Возвращает матчи с коэффициентами в заданном диапазоне и которые еще не завершились.
+        Работает с кэшем и API.
         """
         matches = await self.fetch_matches()
         result = []
+        now = datetime.utcnow() # Получаем текущее время по UTC
+        
         for match in matches:
             try:
+                # Преобразуем время матча в объект datetime (предполагая, что match_time находится в UTC)
+                # API The Odds API обычно возвращает время в ISO 8601 формате, которое datetime.fromisoformat может обработать
+                match_time_str = match.get("commence_time") # Используем "commence_time" из API
+                if not match_time_str:
+                    logging.warning(f"Match missing commence_time: {match.get('id')}")
+                    continue
+
+                match_time = datetime.fromisoformat(match_time_str.replace('Z', '+00:00')) # Убедимся, что формат совместим с fromisoformat
+                
+                # Фильтруем матчи, которые уже прошли
+                if match_time < now:
+                    continue
+
                 odds_1 = float(match.get("odds_1", 0))
                 odds_2 = float(match.get("odds_2", 0))
+                
                 if min_odds <= odds_1 <= max_odds or min_odds <= odds_2 <= max_odds:
                     result.append(match)
             except Exception as e:
-                logging.warning(f"Match parse error: {e}")
+                logging.warning(f"Match parse or time comparison error: {e}")
         return result
     async def mark_match_as_notified(self, match_id):
         """
