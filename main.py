@@ -62,12 +62,12 @@ async def decrement_trial_message(user_id):
     """Decrement a trial message if user is on trial"""
     return await db_service.decrement_trial_message(user_id)
 
-async def send_beautiful_message(update, context, text, reply_markup=None):
+async def send_beautiful_message(update, context, text, reply_markup=None, parse_mode=ParseMode.MARKDOWN):
     """Send a premium, beautifully formatted message"""
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=text,
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=parse_mode,
         reply_markup=reply_markup
     )
 
@@ -404,7 +404,7 @@ async def admin_give_subscription(update: Update, context: ContextTypes.DEFAULT_
 async def handle_admin_give_sub_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.message.text.strip().replace("@", "")
     context.user_data["sub_username"] = username
-    escaped_username = escape_markdown(username, version=1) # Экранируем имя пользователя для MarkdownV1
+    escaped_username = escape_markdown(username, version=2) # Экранируем имя пользователя для MarkdownV2
     keyboard = [
         [InlineKeyboardButton("1 неделя", callback_data="admin_give_week")],
         [InlineKeyboardButton("2 недели", callback_data="admin_give_two_weeks")],
@@ -414,7 +414,8 @@ async def handle_admin_give_sub_username(update: Update, context: ContextTypes.D
     await send_beautiful_message(
         update, context,
         f"⏱️ Выберите срок премиум-подписки для @{escaped_username}:",
-        InlineKeyboardMarkup(keyboard)
+        InlineKeyboardMarkup(keyboard),
+        parse_mode=ParseMode.MARKDOWN_V2 # Указываем MarkdownV2 для этого сообщения
     )
     context.user_data.pop("admin_give_sub", None)
 
