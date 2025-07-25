@@ -196,7 +196,7 @@ class PaymentService:
         user = await DatabaseService.get_user_by_telegram_id(payment_link.telegram_user_id)
         if not user:
             return {"success": False, "message": "User not found"}
-        subscription = await DatabaseService.create_subscription(
+        subscription, is_renewal = await self.db_service.create_subscription(
             user.id,
             payment_link.subscription_type,
             payment_link.amount,
@@ -206,5 +206,6 @@ class PaymentService:
             "success": True,
             "user_id": user.telegram_id,
             "subscription_type": subscription.subscription_type,
-            "end_date": subscription.end_date.strftime("%d.%m.%Y %H:%M")
+            "end_date": subscription.end_date.strftime("%d.%m.%Y %H:%M"),
+            "is_renewal": is_renewal
         } 
