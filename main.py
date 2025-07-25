@@ -404,7 +404,7 @@ async def admin_give_subscription(update: Update, context: ContextTypes.DEFAULT_
 async def handle_admin_give_sub_username(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = update.message.text.strip().replace("@", "")
     context.user_data["sub_username"] = username
-    escaped_username = escape_markdown(username, version=2) # Экранируем имя пользователя
+    escaped_username = escape_markdown(username, version=1) # Экранируем имя пользователя для MarkdownV1
     keyboard = [
         [InlineKeyboardButton("1 неделя", callback_data="admin_give_week")],
         [InlineKeyboardButton("2 недели", callback_data="admin_give_two_weeks")],
