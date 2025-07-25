@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 import threading
 
+from models import User, Subscription, PaymentLink, Match, Stats
+
 # --- Автоматическая подгрузка .env ---
 class EnvWatcher:
     def __init__(self, env_path=None, poll_interval=5):
@@ -33,50 +35,50 @@ class EnvWatcher:
         self._thread.join()
 _env_watcher = EnvWatcher()
 
-Base = declarative_base()
+# Base = declarative_base() # <-- Удаляем это
 
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    telegram_id = Column(Integer, unique=True)
-    username = Column(String)
-    first_name = Column(String)
-    last_name = Column(String)
-    registration_date = Column(DateTime, default=datetime.utcnow)
-    trial_messages_left = Column(Integer, default=3)
+# class User(Base): # <-- Удаляем это и весь класс User
+#     __tablename__ = "users"
+#     id = Column(Integer, primary_key=True)
+#     telegram_id = Column(Integer, unique=True)
+#     username = Column(String)
+#     first_name = Column(String)
+#     last_name = Column(String)
+#     registration_date = Column(DateTime, default=datetime.utcnow)
+#     trial_messages_left = Column(Integer, default=3)
 
-class Subscription(Base):
-    __tablename__ = "subscriptions"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
-    start_date = Column(DateTime)
-    end_date = Column(DateTime)
-    subscription_type = Column(String)
-    price_paid = Column(Float)
-    payment_id = Column(String)
+# class Subscription(Base): # <-- Удаляем это и весь класс Subscription
+#     __tablename__ = "subscriptions"
+#     id = Column(Integer, primary_key=True)
+#     user_id = Column(Integer)
+#     start_date = Column(DateTime)
+#     end_date = Column(DateTime)
+#     subscription_type = Column(String)
+#     price_paid = Column(Float)
+#     payment_id = Column(String)
 
-class PaymentLink(Base):
-    __tablename__ = "payment_links"
-    id = Column(Integer, primary_key=True)
-    telegram_user_id = Column(Integer)
-    unique_id = Column(String, unique=True)
-    subscription_type = Column(String)
-    amount = Column(Float)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    paid = Column(Boolean, default=False)
+# class PaymentLink(Base): # <-- Удаляем это и весь класс PaymentLink
+#     __tablename__ = "payment_links"
+#     id = Column(Integer, primary_key=True)
+#     telegram_user_id = Column(Integer)
+#     unique_id = Column(String, unique=True)
+#     subscription_type = Column(String)
+#     amount = Column(Float)
+#     created_at = Column(DateTime, default=datetime.utcnow)
+#     paid = Column(Boolean, default=False)
 
-class Match(Base):
-    __tablename__ = "matches"
-    id = Column(Integer, primary_key=True)
-    home_team = Column(String)
-    away_team = Column(String)
-    competition = Column(String)
-    match_time = Column(DateTime)
-    odds_1 = Column(Float)
-    odds_x = Column(Float)
-    odds_2 = Column(Float)
-    notification_sent = Column(Boolean, default=False)
-    match_url = Column(String)
+# class Match(Base): # <-- Удаляем это и весь класс Match
+#     __tablename__ = "matches"
+#     id = Column(Integer, primary_key=True)
+#     home_team = Column(String)
+#     away_team = Column(String)
+#     competition = Column(String)
+#     match_time = Column(DateTime)
+#     odds_1 = Column(Float)
+#     odds_x = Column(Float)
+#     odds_2 = Column(Float)
+#     notification_sent = Column(Boolean, default=False)
+#     match_url = Column(String)
 
 class DatabaseService:
     """
@@ -192,8 +194,7 @@ class DatabaseService:
             await session.commit()
             await session.refresh(subscription)
             return subscription
-    @staticmethod
-    async def admin_create_subscription(username, subscription_type):
+    async def admin_create_subscription(self, username, subscription_type):
         async with self.async_session() as session:
             user_result = await session.execute(select(User).where(User.username == username))
             user = user_result.scalars().first()
@@ -225,8 +226,7 @@ class DatabaseService:
             await session.refresh(subscription)
             return subscription, user.telegram_id
 
-    @staticmethod
-    async def revoke_subscription(username):
+    async def revoke_subscription(self, username):
         async with self.async_session() as session:
             user_result = await session.execute(select(User).where(User.username == username))
             user = user_result.scalars().first()
@@ -251,8 +251,7 @@ class DatabaseService:
             await session.commit()
             return user.telegram_id
 
-    @staticmethod
-    async def add_match(home_team, away_team, competition, match_time, odds_1, odds_x, odds_2, match_url=None):
+    async def add_match(self, home_team, away_team, competition, match_time, odds_1, odds_x, odds_2, match_url=None):
         async with self.async_session() as session:
             match = Match(
                 home_team=home_team,
@@ -269,8 +268,7 @@ class DatabaseService:
             await session.refresh(match)
             return match
 
-    @staticmethod
-    async def get_matches_with_target_odds():
+    async def get_matches_with_target_odds(self):
         async with self.async_session() as session:
             result = await session.execute(
                 select(Match).where(
@@ -292,8 +290,7 @@ class DatabaseService:
             )
             return result.scalars().all()
 
-    @staticmethod
-    async def mark_match_as_notified(match_id):
+    async def mark_match_as_notified(self, match_id):
         async with self.async_session() as session:
             result = await session.execute(
                 select(Match).where(Match.id == match_id)
