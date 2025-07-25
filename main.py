@@ -80,9 +80,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Бот ищет только такие сочетания коэффициентов:\n"
         "• 4.25 и 1.225\n"
         "• 4.22 и 1.225\n\n"
-        f"Осталось бесплатных запросов: *{db_user.trial_messages_left}*\n\n"
-        "Для полного доступа оформите подписку."
     )
+    
+    active_subscription = await db_service.get_active_subscription(db_user.id)
+    if active_subscription:
+        sub_types = {"week": "1 неделя", "two_weeks": "2 недели", "month": "1 месяц"}
+        sub_name = sub_types.get(active_subscription.subscription_type, active_subscription.subscription_type)
+        end_date_str = active_subscription.end_date.strftime("%d.%m.%Y %H:%M")
+        welcome_text += (
+            f"*У вас активна подписка:* {sub_name}\n"
+            f"Действует до: {end_date_str}\n\n"
+        )
+    else:
+        welcome_text += f"Осталось бесплатных запросов: *{db_user.trial_messages_left}*\n\n"
+        welcome_text += "Для полного доступа оформите подписку."
+
     keyboard = [
         [InlineKeyboardButton("🔎 Найти матчи", callback_data="find_matches")],
         [InlineKeyboardButton("💳 Оформить подписку", callback_data="buy_subscription")]
