@@ -37,6 +37,9 @@ class EnvWatcher:
 _env_watcher = EnvWatcher()
 
 
+# Определяем Base здесь, так как он используется для Base.metadata.create_all
+Base = declarative_base()
+
 class DatabaseService:
     """
     Абстракция для работы с БД. Автоматически подгружает конфиги, поддерживает разные БД, 
