@@ -442,7 +442,7 @@ async def admin_process_give_subscription(update: Update, context: ContextTypes.
     subscription, user_telegram_id, is_renewal = result
     sub_types = {"week": "1 неделя", "two_weeks": "2 недели", "month": "1 месяц"}
     sub_name = sub_types.get(sub_type, sub_type)
-    end_date = subscription.end_date.strftime("%d.%m.%Y %H:%M")
+    end_date = subscription.end_date.strftime("%d\.%m\.%Y %H\:%M")
 
     if is_renewal:
         admin_status_text = "*Подписка успешно продлена пользователю*"
@@ -505,8 +505,8 @@ async def handle_admin_revoke_sub_username(update: Update, context: ContextTypes
         InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Назад", callback_data="admin_panel")]])
     )
     user_text = (
-        "*Ваша подписка OddFury была аннулирована администратором.*\n\n"
-        "Если вы считаете это ошибкой — свяжитесь с поддержкой OddFury."
+        "*Ваша подписка OddFury была аннулирована администратором\.*\n\n"
+        "Если вы считаете это ошибкой — свяжитесь с поддержкой OddFury\."
     )
     try:
         await context.bot.send_message(
