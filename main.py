@@ -251,7 +251,7 @@ async def send_match_info(bot, chat_id, match, is_notification=False):
     match_text = (
         f"{prefix}*{match.home_team} — {match.away_team}*\n"
         f"{match.competition}\n"
-        f"{match.match_time.strftime("%d.%m.%Y %H:%M")}\n\n"
+        f"{match.match_time.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"Коэффициенты:\n"
         f"1: {match.odds_1:.2f}   X: {match.odds_x:.2f}   2: {match.odds_2:.3f}"
     )
