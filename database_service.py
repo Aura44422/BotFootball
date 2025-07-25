@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 import threading
 
-from models import User, Subscription, PaymentLink, Match, Stats
+from models import User, Subscription, PaymentLink, Match, Stats, Base
 
 # --- Автоматическая подгрузка .env ---
 class EnvWatcher:
