@@ -3,6 +3,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 import json
+import uuid
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler, 
