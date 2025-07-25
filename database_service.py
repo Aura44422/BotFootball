@@ -7,9 +7,6 @@ from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, select
 from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 import threading
-import json
-
-from models import User, Subscription, PaymentLink, Match, Stats
 
 # --- Автоматическая подгрузка .env ---
 class EnvWatcher:
@@ -36,9 +33,50 @@ class EnvWatcher:
         self._thread.join()
 _env_watcher = EnvWatcher()
 
-
-# Определяем Base здесь, так как он используется для Base.metadata.create_all
 Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(Integer, unique=True)
+    username = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
+    registration_date = Column(DateTime, default=datetime.utcnow)
+    trial_messages_left = Column(Integer, default=3)
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
+    subscription_type = Column(String)
+    price_paid = Column(Float)
+    payment_id = Column(String)
+
+class PaymentLink(Base):
+    __tablename__ = "payment_links"
+    id = Column(Integer, primary_key=True)
+    telegram_user_id = Column(Integer)
+    unique_id = Column(String, unique=True)
+    subscription_type = Column(String)
+    amount = Column(Float)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    paid = Column(Boolean, default=False)
+
+class Match(Base):
+    __tablename__ = "matches"
+    id = Column(Integer, primary_key=True)
+    home_team = Column(String)
+    away_team = Column(String)
+    competition = Column(String)
+    match_time = Column(DateTime)
+    odds_1 = Column(Float)
+    odds_x = Column(Float)
+    odds_2 = Column(Float)
+    notification_sent = Column(Boolean, default=False)
+    match_url = Column(String)
 
 class DatabaseService:
     """
