@@ -104,29 +104,47 @@ async def find_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
     matches = await match_service.check_for_matches_with_target_odds()
     user = await db_service.get_user_by_telegram_id(user_id)
     is_on_trial = user and user.trial_messages_left > 0 and not await db_service.has_active_subscription(user.id)
-    if is_on_trial:
-        remaining = await decrement_trial_message(user_id)
-        trial_msg = f"\n\nОсталось бесплатных запросов: *{remaining}*"
-        await context.bot.edit_message_text(
-            chat_id=update.effective_chat.id,
-            message_id=loading_msg.message_id,
-            text=f"Поиск завершён.{trial_msg}",
-            parse_mode=ParseMode.MARKDOWN
-        )
-    else:
-        await context.bot.edit_message_text(
-            chat_id=update.effective_chat.id,
-            message_id=loading_msg.message_id,
-            text="Поиск завершён.",
-            parse_mode=ParseMode.MARKDOWN
-        )
+
     if not matches:
+        if is_on_trial:
+            await context.bot.edit_message_text(
+                chat_id=update.effective_chat.id,
+                message_id=loading_msg.message_id,
+                text="Поиск завершён. Осталось бесплатных запросов: *0*\n\nВ данный момент нет подходящих матчей.\nВы получите уведомление, как только они появятся!",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            await context.bot.edit_message_text(
+                chat_id=update.effective_chat.id,
+                message_id=loading_msg.message_id,
+                text="Поиск завершён.\n\nВ данный момент нет подходящих матчей.\nВы получите уведомление, как только они появятся!",
+                parse_mode=ParseMode.MARKDOWN
+            )
         await send_beautiful_message(
             update, context,
             "В данный момент нет подходящих матчей.\nВы получите уведомление, как только они появятся.",
             InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ В меню", callback_data="start")]])
         )
         return
+
+    # Only decrement trial message if matches are found
+    if is_on_trial:
+        remaining = await decrement_trial_message(user_id)
+        trial_msg = f"\n\nОсталось бесплатных запросов: *{remaining}*"
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            message_id=loading_msg.message_id,
+            text=f"Поиск завершён!{trial_msg}",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    else:
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            message_id=loading_msg.message_id,
+            text="Поиск завершён!",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
     for match in matches:
         await send_match_info(context.bot, update.effective_chat.id, match)
         await match_service.mark_match_as_notified(match.id)
