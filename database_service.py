@@ -397,7 +397,7 @@ class DatabaseService:
             
             subscription_counts = {}
             for row in sub_types_result:
-                subscription_counts[row[0]] = row[1]
+                subscription_counts[row.subscription_type] = row.count
             
             most_popular = None
             if subscription_counts:
