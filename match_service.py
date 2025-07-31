@@ -104,8 +104,33 @@ class MatchService:
                 if match_time < now:
                     continue
 
-                odds_1 = float(match.get("odds_1", 0))
-                odds_2 = float(match.get("odds_2", 0))
+                # Получаем коэффициенты из bookmakers
+                bookmakers = match.get("bookmakers", [])
+                if not bookmakers:
+                    continue
+                
+                # Берем первый bookmaker (обычно это основной)
+                markets = bookmakers[0].get("markets", [])
+                if not markets:
+                    continue
+                
+                # Ищем market с head-to-head коэффициентами
+                h2h_market = None
+                for market in markets:
+                    if market.get("key") == "h2h":
+                        h2h_market = market
+                        break
+                
+                if not h2h_market:
+                    continue
+                
+                outcomes = h2h_market.get("outcomes", [])
+                if len(outcomes) < 2:
+                    continue
+                
+                # Получаем коэффициенты (обычно первый - home, второй - away)
+                odds_1 = float(outcomes[0].get("price", 0))
+                odds_2 = float(outcomes[1].get("price", 0))
                 
                 if min_odds <= odds_1 <= max_odds or min_odds <= odds_2 <= max_odds:
                     result.append(match)

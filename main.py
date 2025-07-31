@@ -161,7 +161,12 @@ async def find_matches(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for match in matches:
         await send_match_info(context.bot, update.effective_chat.id, match)
-        await match_service.mark_match_as_notified(match.id)
+        # Получаем ID матча в зависимости от типа объекта
+        if hasattr(match, 'id'):
+            match_id = match.id
+        else:
+            match_id = match.get("id", "unknown")
+        await match_service.mark_match_as_notified(match_id)
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="Показаны все найденные матчи.",
@@ -264,7 +269,12 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             for match in matches:
                 await send_match_info(context.bot, update.effective_chat.id, match)
-                await match_service.mark_match_as_notified(match.id)
+                # Получаем ID матча в зависимости от типа объекта
+                if hasattr(match, 'id'):
+                    match_id = match.id
+                else:
+                    match_id = match.get("id", "unknown")
+                await match_service.mark_match_as_notified(match_id)
         else:
             await context.bot.edit_message_text(
                 chat_id=update.effective_chat.id,
@@ -284,23 +294,63 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_beautiful_message(update, context, error_text, InlineKeyboardMarkup(keyboard))
 
 async def send_match_info(bot, chat_id, match, is_notification=False):
-    match_time = match.match_time.strftime("%d.%m.%Y %H:%M")
+    # Проверяем, является ли match объектом из БД или словарем из API
+    if hasattr(match, 'match_time'):
+        # Это объект из БД
+        match_time = match.match_time.strftime("%d.%m.%Y %H:%M")
+        home_team = match.home_team
+        away_team = match.away_team
+        competition = match.competition
+        odds_1 = match.odds_1
+        odds_x = match.odds_x
+        odds_2 = match.odds_2
+        match_url = match.match_url
+    else:
+        # Это словарь из API
+        match_time_str = match.get("commence_time")
+        if match_time_str:
+            match_time = datetime.fromisoformat(match_time_str.replace('Z', '+00:00')).strftime("%d.%m.%Y %H:%M")
+        else:
+            match_time = "Время не указано"
+        
+        home_team = match.get("home_team", "Неизвестная команда")
+        away_team = match.get("away_team", "Неизвестная команда")
+        sport_key = match.get("sport_key", "")
+        competition = f"Спорт: {sport_key}"
+        
+        # Получаем коэффициенты из bookmakers
+        bookmakers = match.get("bookmakers", [])
+        odds_1 = odds_x = odds_2 = 0.0
+        if bookmakers:
+            markets = bookmakers[0].get("markets", [])
+            for market in markets:
+                if market.get("key") == "h2h":
+                    outcomes = market.get("outcomes", [])
+                    if len(outcomes) >= 2:
+                        odds_1 = float(outcomes[0].get("price", 0))
+                        odds_2 = float(outcomes[1].get("price", 0))
+                        # Для API обычно нет X коэффициента, используем среднее
+                        odds_x = (odds_1 + odds_2) / 2
+                    break
+        
+        match_url = None  # API не предоставляет прямые ссылки
+    
     prefix = "НОВЫЙ МАТЧ!\n" if is_notification else ""
     
     # Экранируем названия команд и соревнования
-    home_team_escaped = escape_markdown(match.home_team, version=2)
-    away_team_escaped = escape_markdown(match.away_team, version=2)
-    competition_escaped = escape_markdown(match.competition, version=2)
+    home_team_escaped = escape_markdown(home_team, version=2)
+    away_team_escaped = escape_markdown(away_team, version=2)
+    competition_escaped = escape_markdown(competition, version=2)
 
     match_text = (
         f"{prefix}*{home_team_escaped} — {away_team_escaped}*\n"
         f"{competition_escaped}\n"
         f"{match_time}\n\n"
         f"Коэффициенты:\n"
-        f"1: {match.odds_1:.2f}   X: {match.odds_x:.2f}   2: {match.odds_2:.3f}"
+        f"1: {odds_1:.2f}   X: {odds_x:.2f}   2: {odds_2:.3f}"
     )
-    if match.match_url:
-        keyboard = [[InlineKeyboardButton("🔗 Ссылка на матч", url=match.match_url)]]
+    if match_url:
+        keyboard = [[InlineKeyboardButton("🔗 Ссылка на матч", url=match_url)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
     else:
         reply_markup = None
@@ -335,7 +385,17 @@ async def notify_users_about_new_matches(context: ContextTypes.DEFAULT_TYPE):
             subscribed_users = result.scalars().all()
             
             for match in matches:
-                logger.info(f"Notifying users about match: {match.home_team} vs {match.away_team}")
+                # Получаем названия команд для логирования
+                if hasattr(match, 'home_team'):
+                    home_team = match.home_team
+                    away_team = match.away_team
+                    match_id = match.id
+                else:
+                    home_team = match.get("home_team", "Неизвестная команда")
+                    away_team = match.get("away_team", "Неизвестная команда")
+                    match_id = match.get("id", "unknown")
+                
+                logger.info(f"Notifying users about match: {home_team} vs {away_team}")
                 
                 # Notify each user with active subscription
                 for user in subscribed_users:
@@ -345,7 +405,7 @@ async def notify_users_about_new_matches(context: ContextTypes.DEFAULT_TYPE):
                         logger.error(f"Failed to notify user {user.telegram_id}: {e}")
                 
                 # Mark match as notified
-                await match_service.mark_match_as_notified(match.id)
+                await match_service.mark_match_as_notified(match_id)
                 
         logger.info(f"Notified {len(subscribed_users)} users about {len(matches)} matches")
     
@@ -420,7 +480,7 @@ async def handle_admin_give_sub_username(update: Update, context: ContextTypes.D
     ]
     await send_beautiful_message(
         update, context,
-        f"⏱️ Выберите срок премиум-подписки для \@{escaped_username}:", # Экранируем @ для надежности
+        f"⏱️ Выберите срок премиум-подписки для @{escaped_username}:", # Экранируем @ для надежности
         InlineKeyboardMarkup(keyboard),
         parse_mode=ParseMode.MARKDOWN_V2 # Указываем MarkdownV2 для этого сообщения
     )
@@ -685,15 +745,18 @@ async def healthcheck(request):
     return web.Response(text="OK", status=200)
 
 def run_healthcheck_server():
-    loop = asyncio.new_event_loop()  # Создаем новый event loop для этого потока
-    asyncio.set_event_loop(loop)     # Устанавливаем его как текущий event loop
-    app = web.Application()
-    app.router.add_get('/health', healthcheck)
-    runner = web.AppRunner(app)
-    loop.run_until_complete(runner.setup())
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
-    loop.run_until_complete(site.start())
-    loop.run_forever()
+    try:
+        loop = asyncio.new_event_loop()  # Создаем новый event loop для этого потока
+        asyncio.set_event_loop(loop)     # Устанавливаем его как текущий event loop
+        app = web.Application()
+        app.router.add_get('/health', healthcheck)
+        runner = web.AppRunner(app)
+        loop.run_until_complete(runner.setup())
+        site = web.TCPSite(runner, '0.0.0.0', 8080)
+        loop.run_until_complete(site.start())
+        loop.run_forever()
+    except Exception as e:
+        logger.error(f"Healthcheck server error: {e}")
 
 # Graceful shutdown
 should_exit = False
@@ -707,16 +770,24 @@ signal.signal(signal.SIGTERM, handle_signal)
 
 async def async_init():
     """Асинхронная инициализация сервисов и БД."""
-    await db_service.initialize()
-    await match_service.api_client.fetch_matches()  # warmup
-    await payment_service.initialize()
+    try:
+        await db_service.initialize()
+        await match_service.api_client.fetch_matches()  # warmup
+        await payment_service.initialize()
+    except Exception as e:
+        logger.error(f"Error during async initialization: {e}")
+        raise
 
 def main():
     """Главная точка входа. Запускает Telegram-бота, healthcheck и планировщик задач."""
     import asyncio
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(async_init())
+    try:
+        loop.run_until_complete(async_init())
+    except Exception as e:
+        logger.error(f"Failed to initialize services: {e}")
+        return
     application = Application.builder().token(os.getenv("BOT_TOKEN")).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_click))
@@ -750,24 +821,38 @@ def main():
         minute=0, 
         id='weekly_stats'
     )
-    scheduler.start()
+    try:
+        scheduler.start()
+    except Exception as e:
+        logger.error(f"Failed to start scheduler: {e}")
+        return
+    
     import threading
-    threading.Thread(target=run_healthcheck_server, daemon=True).start()
+    try:
+        threading.Thread(target=run_healthcheck_server, daemon=True).start()
+    except Exception as e:
+        logger.error(f"Failed to start healthcheck server: {e}")
     import atexit
     def cleanup():
-        loop.run_until_complete(match_service.api_client.fetch_matches())
-        loop.run_until_complete(payment_service.close())
-        loop.run_until_complete(db_service.close())
-    atexit.register(cleanup)
-    application.run_polling()
-    # Graceful shutdown loop
-    global should_exit
-    while not should_exit:
         try:
-            loop.run_until_complete(asyncio.sleep(1))
-        except KeyboardInterrupt:
-            break
-    logger.info("Bot stopped.")
+            loop.run_until_complete(payment_service.close())
+            loop.run_until_complete(db_service.close())
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}")
+    atexit.register(cleanup)
+    try:
+        application.run_polling()
+    except Exception as e:
+        logger.error(f"Bot polling error: {e}")
+    finally:
+        # Graceful shutdown loop
+        global should_exit
+        while not should_exit:
+            try:
+                loop.run_until_complete(asyncio.sleep(1))
+            except KeyboardInterrupt:
+                break
+        logger.info("Bot stopped.")
 
 if __name__ == "__main__":
     main() 

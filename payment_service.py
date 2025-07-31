@@ -190,10 +190,10 @@ class PaymentService:
                 logging.warning(f"Donation parse error: {e}")
         if not found:
             return {"success": False, "message": "Платеж не найден. Проверьте, что вы оплатили по правильной ссылке и указали верную сумму."}
-        updated_link = await DatabaseService.mark_payment_as_paid(unique_id)
+        updated_link = await self.db_service.mark_payment_as_paid(unique_id)
         if not updated_link:
             return {"success": False, "message": "Failed to process payment"}
-        user = await DatabaseService.get_user_by_telegram_id(payment_link.telegram_user_id)
+        user = await self.db_service.get_user_by_telegram_id(payment_link.telegram_user_id)
         if not user:
             return {"success": False, "message": "User not found"}
         subscription, is_renewal = await self.db_service.create_subscription(
